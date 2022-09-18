@@ -1,22 +1,35 @@
-name: Hello World
+name: Build OpenWrt
 on: push
 jobs: 
-  my_first_job:
-    name: My first job
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-20.04
     steps:
-    - name: checkout
-      uses: actions/checkout@master
-    - name: Run a single-line script
-      run:  echo "Hello World!"
-  my_second_job:
-    name: My second job
-    runs-on: macos-latest
-    steps:
-    - name: Run a multi-line script
-      env:
-        MY_VAR: Hello World!
-        MY_NAME: P3TERX
+    - name: Installation depends
+      run: | 
+        sudo apt-get update
+        sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 python2.7 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib antlr3 gperf wget curl swig rsync
+    - name: Clone source code
       run: |
-        echo $MY_VAR
-        echo My name is $MY_NAME
+        git clone https://github.com/coolsnowwolf/lede
+        cd lede
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+    - name: Generate config file
+      run: | 
+        cd lede
+        make defconfig
+    - name: Download package
+      run: |
+        cd lede
+        make -j8 download V=s
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+    - name: Build
+      run: |
+        cd lede
+        make -j$(nproc)
+    - name : Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: OpenWrt
+        path: lede/bin
